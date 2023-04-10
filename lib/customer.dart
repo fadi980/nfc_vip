@@ -9,6 +9,7 @@ class Customer {
   String PhoneNo = '--';
   String MembershipDate = '--';
   int MembershipLevel = 0;
+  List<String> CustomTags = [];
   String Message = '';
   var rnd = Random();
 
@@ -30,5 +31,6 @@ class Customer {
     PhoneNo = '-';
     MembershipDate = '-';
     MembershipLevel = 0;
+    CustomTags = [];
   }
 }

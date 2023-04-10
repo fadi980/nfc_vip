@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:material_tag_editor/tag_editor.dart';
+import 'package:nfc_vip/widget/tageditor_chip.dart';
 import 'package:nfc_vip/api/nfcvip-api.dart';
 import 'package:nfc_vip/nfc_handler.dart';
 import 'package:nfc_vip/customer.dart';
 import 'package:nfc_vip/settings.dart';
 import 'package:nfc_vip/theme/constants.dart';
 import 'preferences.dart';
+
 
 void main() {
   runApp(const MaterialApp(
@@ -37,6 +41,10 @@ class _CIDReaderState extends State<CIDReader> {
 
   final txtCustomerNameController = TextEditingController();
   final txtPhoneController = TextEditingController();
+
+  //List<String> _values = [];
+  final FocusNode _focusNode = FocusNode();
+  final TextEditingController _textEditingController = TextEditingController();
 
   Color? appBar_Color = AppColors.appBar_Normal;
   Color? button_Color = AppColors.readButton_Inactive;
@@ -93,6 +101,21 @@ class _CIDReaderState extends State<CIDReader> {
     //print('Scanning timed out');
     nfc_Scanning = false;
     button_Color = AppColors.readButton_Active;
+  }
+
+  _onDelete(index) {
+    setState(() {
+      customer.CustomTags.removeAt(index);
+    });
+  }
+
+  /// This is just an example for using `TextEditingController` to manipulate
+  /// the the `TextField` just like a normal `TextField`.
+  _onPressedModifyTextField() async {
+    print(customer.CustomTags);
+    if (customer.IsValid){
+      await api.updateCustomerTags(customer.CardID, customer.CustomTags);
+    }
   }
 
   Future<void> addNewCustomer(String cardID, String customerName,
@@ -184,7 +207,8 @@ class _CIDReaderState extends State<CIDReader> {
         Timer.periodic(const Duration(seconds: 3), handleCheckNFCTimer);
     //CardReadTimeoutTimer = Timer(Duration(seconds: 5), handleCardReadTimeoutTimer);
 
-    setState(() {});
+    setState(() {}
+    );
 
     reader.CardDetectedEvent.subscribe((args) {
       cardDetectedEventHandler(args);
@@ -236,8 +260,56 @@ class _CIDReaderState extends State<CIDReader> {
               style: nfcvip_TextStyles.CardItemTitle),
           Text('${customer.MembershipLevel}',
               style: nfcvip_TextStyles.CardItemValue),
-          const SizedBox(height: 60.0,),
-          Text(
+          const SizedBox(height: 10.0,),
+          Text('Notes', style: nfcvip_TextStyles.CardItemTitle),
+          Container(
+            height: 100,
+            decoration: BoxDecoration(
+                border: Border.all(color: Colors.blue.shade300, width: 2.0),
+              color: Colors.grey.shade800,
+            ),
+          child:
+            TagEditor(
+              length: customer.CustomTags.length,
+              controller: _textEditingController,
+              focusNode: _focusNode,
+
+              delimiters: [','],
+              hasAddButton: true,
+              resetTextOnSubmitted: true,
+              // This is set to grey just to illustrate the `textStyle` prop
+              textStyle: const TextStyle(color: Colors.grey),
+              onSubmitted: (outstandingValue) {
+                setState(() {
+                  customer.CustomTags.add(outstandingValue);
+                });
+              },
+              inputDecoration: InputDecoration(
+                border: InputBorder.none,
+                hintText: 'Add note here...',
+                hintStyle: TextStyle(color: Colors.grey.shade600)
+              ),
+              onTagChanged: (newValue) {
+                setState(() {
+                  customer.CustomTags.add(newValue);
+                });
+              },
+              tagBuilder: (context, index) => nfcvip_Chip(
+                index: index,
+                label: customer.CustomTags[index],
+                onDeleted: _onDelete,
+              ),
+              // InputFormatters example, this disallow \ and /
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'[/\\]'))
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: _onPressedModifyTextField,
+            child: const Text('Update Notes'),
+          ),
+          /*Text(
             'card id: $cardID',
             style: TextStyle(
               color: Colors.grey[600],
@@ -245,7 +317,7 @@ class _CIDReaderState extends State<CIDReader> {
               //fontWeight: FontWeight.bold,
               fontSize: 12.0,
             ),
-          ),
+          ),*/
           const SizedBox(height: 20.0,),
           Center(
             child:
@@ -332,6 +404,20 @@ class _CIDReaderState extends State<CIDReader> {
                 )
             )
                 : const SizedBox(),
+          ),
+          Center(
+            child:
+            (!nfc_Available) ?
+                Container(
+                    decoration: BoxDecoration(
+                        color: Colors.red[300],border: Border.all(color: Colors.red, width: 2)
+                    ),
+                  width: 400,
+                  height: 50,
+                  alignment: Alignment.center,
+                  child: Text('NFC is not available'),
+                )
+                : const SizedBox()
           ),
         ],
       )
